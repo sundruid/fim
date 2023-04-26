@@ -120,6 +120,10 @@ func main() {
 	// Close the jobs channel and wait for all goroutines to finish
 	close(jobs)
 	wg.Wait()
+	
+	// Close the file and flush the writer explicitly for Windows
+	writer.Flush()
+	file.Close()
 
 	err = os.Rename(tempFile, outFile)
 	if err != nil {
