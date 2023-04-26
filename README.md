@@ -2,6 +2,7 @@
 File integrity monitor written in Golang and supporting multi-threaded scanning.
 
 Usage: fim [-v] [-h]
+
 -v: Verbose mode
 -h: Help
 
