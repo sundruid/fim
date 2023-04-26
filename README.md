@@ -16,3 +16,5 @@ since last scan.
 You can exclude directories or files using the absolute file path 
 in the exclude.config file. Directories listed will exclude all 
 subdirectories. Will not follow symlinks.
+
+This code supports multi-platform compiling.
