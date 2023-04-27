@@ -123,7 +123,7 @@ func main() {
 	// Close the jobs channel and wait for all goroutines to finish
 	close(jobs)
 	wg.Wait()
-	
+
 	// Close the file and flush the writer explicitly for Windows
 	writer.Flush()
 	file.Close()
@@ -209,10 +209,14 @@ func readExcludePaths(filename string) []string {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
 	paths := []string{}
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			// Ignore empty lines or lines starting with '#'
+			continue
+		}
 		paths = append(paths, line)
 		if v {
 			fmt.Printf("Excluding path: %s\n", line)
