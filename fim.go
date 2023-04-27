@@ -20,11 +20,8 @@ import (
 var v, h bool
 
 var message = `
-v.1
 
-Usage: fim [-v] [-h]
--v: Verbose mode
--h: Help
+v.1
 
 This is a multi-threaded application that performs a file integrity 
 check using sha256 hashing and comparing since last scan. 
