@@ -1,5 +1,3 @@
-//Sculpted, debugged and maintained by @sundruid@infosec.exchange
-
 package main
 
 import (
@@ -63,7 +61,10 @@ func main() {
 	previousScan := make(map[string]string)
 	var previousScanMutex sync.Mutex
 
-	if _, err := os.Stat(outFile); !os.IsNotExist(err) {
+	fileExists := true
+	if _, err := os.Stat(outFile); os.IsNotExist(err) {
+		fileExists = false
+	} else {
 		previousScan = readPreviousScan(outFile)
 	}
 
@@ -91,7 +92,7 @@ func main() {
 	for i := 0; i < workerLimit; i++ {
 		go func() {
 			for p := range jobs {
-				processFile(p, &wg, &previousScanMutex, previousScan, &writeMutex, writer)
+				processFile(p, &wg, &previousScanMutex, previousScan, &writeMutex, writer, fileExists)
 			}
 		}()
 	}
@@ -158,7 +159,7 @@ func main() {
 	}
 }
 
-func processFile(path string, wg *sync.WaitGroup, previousScanMutex *sync.Mutex, previousScan map[string]string, writeMutex *sync.Mutex, writer *bufio.Writer) {
+func processFile(path string, wg *sync.WaitGroup, previousScanMutex *sync.Mutex, previousScan map[string]string, writeMutex *sync.Mutex, writer *bufio.Writer, fileExists bool) {
 	defer wg.Done()
 	absPath := filepath.Clean(path)
 	hash, err := calculateHash(absPath)
@@ -176,6 +177,11 @@ func processFile(path string, wg *sync.WaitGroup, previousScanMutex *sync.Mutex,
 			changed = "TRUE"
 		}
 	} else {
+		if !fileExists {
+			changed = "FALSE"
+		} else {
+			changed = "TRUE"
+		}
 		previousScan[absPath] = hash
 	}
 	previousScanMutex.Unlock()
@@ -255,18 +261,16 @@ func readPreviousScan(filename string) map[string]string {
 }
 
 func shouldExclude(path string, excludePaths []string) bool {
-	absPath := filepath.Clean(path)
 	for _, excludePath := range excludePaths {
-		absExcludePath := filepath.Clean(excludePath)
-		if strings.HasPrefix(absPath, absExcludePath) {
+		if strings.HasPrefix(path, excludePath) {
 			return true
 		}
 	}
 	return false
 }
 
-func calculateHash(filepath string) (string, error) {
-	file, err := os.OpenFile(filepath, os.O_RDONLY, 0)
+func calculateHash(path string) (string, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
@@ -276,5 +280,7 @@ func calculateHash(filepath string) (string, error) {
 	if _, err := io.Copy(hasher, file); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+
+	hash := hasher.Sum(nil)
+	return hex.EncodeToString(hash), nil
 }
