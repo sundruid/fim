@@ -15,11 +15,11 @@ import (
 	"time"
 )
 
-var v, h bool
+var v, vv, h bool
 
 var message = `
 
-v.1
+v.2
 
 This is a multi-threaded application that performs a file integrity 
 check using sha256 hashing and comparing since last scan. 
@@ -38,13 +38,15 @@ type fileInfo struct {
 }
 
 func main() {
-	flag.BoolVar(&v, "v", false, "Verbose mode")
+	flag.BoolVar(&v, "v", false, "Verbose mode (errors only)")
+	flag.BoolVar(&vv, "vv", false, "Super verbose mode (all files processed)")
 	flag.BoolVar(&h, "h", false, "Help")
 	flag.Parse()
 
 	if h {
-		fmt.Println("Usage: fim [-v] [-h]")
-		fmt.Println("-v: Verbose mode")
+		fmt.Println("Usage: fim [-v] [-vv] [-h]")
+		fmt.Println("-v: Verbose mode (errors only)")
+		fmt.Println("-vv: Super verbose mode (all files processed)")
 		fmt.Println("-h: Help")
 		fmt.Println(message)
 		fmt.Println("")
@@ -70,7 +72,7 @@ func main() {
 
 	file, err := os.Create(tempFile)
 	if err != nil {
-		if v {
+		if v || vv {
 			fmt.Println("Error creating temporary file:", err)
 		}
 		return
@@ -99,7 +101,7 @@ func main() {
 
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			if v {
+			if v || vv {
 				fmt.Printf("Error accessing path %q: %v\n", path, err)
 			}
 			return filepath.SkipDir
@@ -136,25 +138,25 @@ func main() {
 
 			removeErr := os.Remove(outFile)
 			if removeErr != nil {
-				if v {
+				if v || vv {
 					fmt.Println("Error removing FIMFILEA.OUT:", removeErr)
 				}
 			} else {
 				renameErr := os.Rename(tempFile, outFile)
 				if renameErr != nil {
-					if v {
+					if v || vv {
 						fmt.Println("Error replacing FIMFILEA.OUT after removing:", renameErr)
 					}
 				}
 			}
 		} else {
-			if v {
+			if v || vv {
 				fmt.Println("Error replacing FIMFILEA.OUT:", err)
 			}
 		}
 	}
 	elapsedTime := time.Since(startTime)
-	if v {
+	if v || vv {
 		fmt.Printf("Total runtime: %s\n", elapsedTime)
 	}
 }
@@ -164,10 +166,14 @@ func processFile(path string, wg *sync.WaitGroup, previousScanMutex *sync.Mutex,
 	absPath := filepath.Clean(path)
 	hash, err := calculateHash(absPath)
 	if err != nil {
-		if v {
+		if v || vv {
 			fmt.Printf("Error calculating hash for file %s: %v\n", absPath, err)
 		}
 		return
+	}
+
+	if vv {
+		fmt.Println(absPath)
 	}
 
 	changed := "FALSE"
@@ -198,7 +204,7 @@ func getRootDir() string {
 	case "darwin", "linux":
 		return "/"
 	default:
-		if v {
+		if v || vv {
 			fmt.Printf("Unsupported operating system: %s\n", osType)
 		}
 		return ""
@@ -208,7 +214,7 @@ func getRootDir() string {
 func readExcludePaths(filename string) []string {
 	file, err := os.Open(filename)
 	if err != nil {
-		if v {
+		if v || vv {
 			fmt.Println("Error opening exclude.config:", err)
 		}
 		return nil
@@ -224,13 +230,13 @@ func readExcludePaths(filename string) []string {
 			continue
 		}
 		paths = append(paths, line)
-		if v {
+		if v || vv {
 			fmt.Printf("Excluding path: %s\n", line)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		if v {
+		if v || vv {
 			fmt.Println("Error reading exclude.config:", err)
 		}
 		return nil
@@ -242,7 +248,7 @@ func readExcludePaths(filename string) []string {
 func readPreviousScan(filename string) map[string]string {
 	file, err := os.Open(filename)
 	if err != nil {
-		if v {
+		if v || vv {
 			fmt.Println("Error opening FIMFILEA.OUT:", err)
 		}
 		return nil
@@ -274,6 +280,7 @@ func calculateHash(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer file.Close()
 
 	hasher := sha256.New()
