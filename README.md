@@ -13,8 +13,6 @@ sudo fim -vv
 sudo fim -v
 sudo fim
 
-v.2
-
 This is a multi-threaded application that performs a file integrity 
 check using sha256 hashing and comparing since last scan. 
 
